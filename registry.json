@@ -18,7 +18,7 @@
     {
       "id": "jellyfin",
       "name": "Jellyfin",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "official": false,
       "author": "THR3ATB3AR",
       "description": "Search your Jellyfin library and play items in mpv.",
@@ -28,7 +28,7 @@
         "Launcher",
         "Media"
       ],
-      "lastUpdated": "2026-04-20T21:49:52+02:00"
+      "lastUpdated": "2026-04-20T21:58:47+02:00"
     }
   ]
 }

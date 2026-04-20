@@ -18,6 +18,10 @@ Item {
     property string currentSearchText: ""
     property bool isSearching: false
     property string lastQuery: ""
+    property string lastPrefix: ""
+    
+    // Path state for drill-down: Array of {name, id, type}
+    property var pathState: []
 
     // Settings
     property string serverUrl: pluginApi?.pluginSettings?.serverUrl || ""
@@ -42,10 +46,13 @@ Item {
 
     function onOpened() {
         supportedLayouts = "list";
-        // Reload settings if they changed while the launcher was closed
         serverUrl = pluginApi?.pluginSettings?.serverUrl || "";
         apiKey = pluginApi?.pluginSettings?.apiKey || "";
         userId = pluginApi?.pluginSettings?.userId || "";
+        
+        // Reset navigation path when opened
+        let empty = [];
+        pathState = empty;
     }
 
     function handleCommand(searchText) {
@@ -65,14 +72,34 @@ Item {
         }];
     }
 
+    function getExpectedPrefix() {
+        let prefix = ">jf ";
+        for (let i = 0; i < pathState.length; i++) {
+            prefix += pathState[i].name + "/";
+        }
+        return prefix;
+    }
+
     function getResults(searchText) {
         if (!searchText.startsWith(">jf ")) return [];
 
-        let query = searchText.slice(4).trim();
-        if (query.length === 0) return [];
+        let prefix = getExpectedPrefix();
+        
+        // If user backspaced out of our path, pop pathState
+        while (!searchText.startsWith(prefix) && pathState.length > 0) {
+            let p = [];
+            for (let i = 0; i < pathState.length - 1; i++) {
+                p.push(pathState[i]);
+            }
+            pathState = p; // Reassign to trigger any bindings
+            prefix = getExpectedPrefix();
+        }
 
-        if (query !== lastQuery) {
+        let query = searchText.slice(prefix.length).trim();
+
+        if (query !== lastQuery || prefix !== lastPrefix) {
             lastQuery = query;
+            lastPrefix = prefix;
             currentSearchText = query;
             debounceTimer.restart();
         }
@@ -131,8 +158,55 @@ Item {
         isSearching = true;
         if (launcher) launcher.updateResults();
 
-        let searchEndpoint = userId ? "/Users/" + userId + "/Items" : "/Items";
-        let url = serverUrl + searchEndpoint + "?SearchTerm=" + encodeURIComponent(query) + "&Recursive=true&IncludeItemTypes=Movie,Episode&Limit=20";
+        let parentId = null;
+        let parentType = null;
+        if (pathState.length > 0) {
+            let lastNode = pathState[pathState.length - 1];
+            parentId = lastNode.id;
+            parentType = lastNode.type;
+        }
+
+        let url = "";
+
+        if (!parentId) {
+            if (query === "") {
+                // Show Libraries
+                url = serverUrl + "/Users/" + userId + "/Views";
+            } else {
+                // Global search (no episodes!)
+                url = serverUrl + "/Users/" + userId + "/Items?SearchTerm=" + encodeURIComponent(query) + "&Recursive=true&IncludeItemTypes=Movie,Series,CollectionFolder&Limit=20";
+            }
+        } else if (parentType === "CollectionFolder" || parentType === "UserView") {
+            if (query === "") {
+                // List Movies/Series in Library
+                url = serverUrl + "/Users/" + userId + "/Items?ParentId=" + parentId + "&IncludeItemTypes=Movie,Series,Folder&SortBy=SortName";
+            } else {
+                // Search in Library (no episodes)
+                url = serverUrl + "/Users/" + userId + "/Items?ParentId=" + parentId + "&SearchTerm=" + encodeURIComponent(query) + "&Recursive=true&IncludeItemTypes=Movie,Series,Folder&Limit=20";
+            }
+        } else if (parentType === "Series" || parentType === "Folder") {
+            if (query === "") {
+                // List Seasons
+                url = serverUrl + "/Users/" + userId + "/Items?ParentId=" + parentId + "&IncludeItemTypes=Season,Folder&SortBy=SortName";
+            } else {
+                // Search Seasons
+                url = serverUrl + "/Users/" + userId + "/Items?ParentId=" + parentId + "&SearchTerm=" + encodeURIComponent(query) + "&IncludeItemTypes=Season,Folder";
+            }
+        } else if (parentType === "Season") {
+            if (query === "") {
+                // List Episodes
+                url = serverUrl + "/Users/" + userId + "/Items?ParentId=" + parentId + "&IncludeItemTypes=Episode&SortBy=SortName";
+            } else {
+                // Search Episodes in this season
+                url = serverUrl + "/Users/" + userId + "/Items?ParentId=" + parentId + "&SearchTerm=" + encodeURIComponent(query) + "&IncludeItemTypes=Episode";
+            }
+        }
+
+        if (url.indexOf("?") !== -1) {
+            url += "&Fields=UserData";
+        } else {
+            url += "?Fields=UserData";
+        }
 
         let xhr = new XMLHttpRequest();
         xhr.open("GET", url);
@@ -150,7 +224,7 @@ Item {
                         if (searchResults.length === 0) {
                             searchResults = [{
                                 "name": "No results",
-                                "description": "No media found for '" + query + "'",
+                                "description": "No media found here.",
                                 "icon": "info-circle",
                                 "isTablerIcon": true,
                                 "isImage": false,
@@ -186,17 +260,35 @@ Item {
     function formatEntry(item) {
         let title = item.Name;
         let desc = "";
+        let isPlayed = item.UserData && item.UserData.Played;
+        let unplayedCount = item.UserData && item.UserData.UnplayedItemCount !== undefined ? item.UserData.UnplayedItemCount : 0;
+        let isFolder = item.IsFolder || item.Type === "CollectionFolder" || item.Type === "UserView" || item.Type === "Series" || item.Type === "Season" || item.Type === "Folder";
+
         if (item.Type === "Episode") {
             desc = "Episode";
-            if (item.SeriesName) desc = item.SeriesName + " - " + desc;
-        } else {
+            if (item.IndexNumber !== undefined) {
+                title = item.IndexNumber + ". " + title;
+            }
+            if (isPlayed) title = "✓ " + title;
+        } else if (item.Type === "Movie") {
             desc = item.ProductionYear ? item.ProductionYear.toString() : "Movie";
+            if (isPlayed) title = "✓ " + title;
+        } else if (item.Type === "Series") {
+            desc = "Series";
+            if (unplayedCount > 0) desc += " (" + unplayedCount + " unplayed)";
+            else if (isPlayed || (item.UserData && item.UserData.PlayedPercentage === 100)) title = "✓ " + title;
+        } else if (item.Type === "Season") {
+            desc = "Season";
+            if (unplayedCount > 0) desc += " (" + unplayedCount + " unplayed)";
+            else if (isPlayed || (item.UserData && item.UserData.PlayedPercentage === 100)) title = "✓ " + title;
+        } else if (item.Type === "CollectionFolder" || item.Type === "UserView") {
+            desc = "Library";
         }
 
         return {
             "name": title,
             "description": desc,
-            "icon": "movie",
+            "icon": isFolder ? "folder" : "movie",
             "isTablerIcon": true,
             "isImage": false,
             "hideIcon": false,
@@ -204,7 +296,6 @@ Item {
             "provider": root,
             "onActivate": function() {
                 root.activateEntry(item);
-                if (launcher) launcher.close();
             }
         };
     }
@@ -214,8 +305,24 @@ Item {
     }
 
     function activateEntry(item) {
-        let streamUrl = serverUrl + "/Items/" + item.Id + "/Download?api_key=" + apiKey;
-        Logger.i("JellyfinProvider", "Playing item " + item.Id + " in mpv");
-        Quickshell.execDetached(["mpv", streamUrl]);
+        let isFolder = item.IsFolder || item.Type === "CollectionFolder" || item.Type === "UserView" || item.Type === "Series" || item.Type === "Season" || item.Type === "Folder";
+
+        if (isFolder) {
+            let newPath = [];
+            for (let i = 0; i < pathState.length; i++) {
+                newPath.push(pathState[i]);
+            }
+            newPath.push({name: item.Name, id: item.Id, type: item.Type});
+            pathState = newPath;
+            
+            let prefix = getExpectedPrefix();
+            if (launcher) launcher.setSearchText(prefix);
+            // We intentionally do not call launcher.close() here!
+        } else {
+            let streamUrl = serverUrl + "/Items/" + item.Id + "/Download?api_key=" + apiKey;
+            Logger.i("JellyfinProvider", "Playing item " + item.Id + " in mpv");
+            Quickshell.execDetached(["mpv", streamUrl]);
+            if (launcher) launcher.close();
+        }
     }
 }
