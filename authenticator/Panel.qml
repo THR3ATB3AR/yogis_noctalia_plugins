@@ -22,17 +22,20 @@ Item {
 
   Process {
     id: pythonProcess
-    command: ["python3", pluginApi ? pluginApi.pluginDir + "/totp.py" : "", "get", JSON.stringify(root.accounts)]
+    command: []
     stdout: StdioCollector {}
+    stderr: StdioCollector {}
     onExited: (exitCode) => {
         if (exitCode === 0) {
             try {
-                let data = JSON.parse(stdout.text);
+                let data = JSON.parse(pythonProcess.stdout.text);
                 root.timeRemaining = data.remaining;
                 root.otpData = data.codes;
             } catch (e) {
-                Logger.e("Authenticator", "Error parsing output", e);
+                Logger.e("Authenticator", "Error parsing output: " + pythonProcess.stdout.text, e);
             }
+        } else {
+            Logger.e("Authenticator", "Python script exited with code " + exitCode + ". Stderr: " + pythonProcess.stderr.text);
         }
     }
   }
@@ -43,13 +46,17 @@ Item {
     repeat: true
     running: true
     onTriggered: {
-        pythonProcess.command[3] = JSON.stringify(root.accounts);
+        if (!pluginApi || pythonProcess.running) return;
+        pythonProcess.command = ["python3", pluginApi.pluginDir + "/totp.py", "get", JSON.stringify(root.accounts)];
         pythonProcess.running = true;
     }
   }
 
   Component.onCompleted: {
-      refreshTimer.triggered();
+      // Small delay to ensure pluginApi is injected
+      Qt.callLater(function() {
+          refreshTimer.triggered();
+      });
   }
 
   Rectangle {
