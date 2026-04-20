@@ -1,0 +1,24 @@
+{
+    "id": "authenticator",
+    "name": "Authenticator",
+    "version": "1.0.0",
+    "description": "Show and copy 2FA OTP codes from your bar using Gnome Keyring for secure storage.",
+    "tags": ["Utility", "Security"],
+    "minNoctaliaVersion": "4.6.1",
+    "author": "THR3ATB3AR",
+    "license": "MIT",
+    "entryPoints": {
+        "main": "Main.qml",
+        "barWidget": "BarWidget.qml",
+        "panel": "Panel.qml",
+        "settings": "Settings.qml"
+    },
+    "dependencies": {
+        "plugins": []
+    },
+    "metadata": {
+        "defaultSettings": {
+            "accounts": []
+        }
+    }
+}

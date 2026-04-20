@@ -5,7 +5,7 @@
     "description": "Search your Jellyfin library and play items in mpv.",
     "tags": ["Launcher", "Media"],
     "minNoctaliaVersion": "4.6.1",
-    "author": "Yogus",
+    "author": "THR3ATB3AR",
     "license": "MIT",
     "entryPoints": {
         "main": "Main.qml",

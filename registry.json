@@ -29,6 +29,21 @@
         "Media"
       ],
       "lastUpdated": "2026-04-20T21:58:47+02:00"
+    },
+    {
+      "id": "authenticator",
+      "name": "Authenticator",
+      "version": "1.0.0",
+      "official": false,
+      "author": "THR3ATB3AR",
+      "description": "Show and copy 2FA OTP codes from your bar using Gnome Keyring for secure storage.",
+      "repository": "https://github.com/THR3ATB3AR/yogis-noctalia-plugins",
+      "license": "MIT",
+      "tags": [
+        "Utility",
+        "Security"
+      ],
+      "lastUpdated": "2026-04-21T00:00:00+02:00"
     }
   ]
 }
