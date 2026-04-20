@@ -14,6 +14,21 @@
         "Terminal"
       ],
       "lastUpdated": "2026-04-20T21:17:01+02:00"
+    },
+    {
+      "id": "jellyfin",
+      "name": "Jellyfin",
+      "version": "1.0.0",
+      "official": false,
+      "author": "THR3ATB3AR",
+      "description": "Search your Jellyfin library and play items in mpv.",
+      "repository": "https://github.com/THR3ATB3AR/yogis-noctalia-plugins",
+      "license": "MIT",
+      "tags": [
+        "Launcher",
+        "Media"
+      ],
+      "lastUpdated": "2026-04-20T21:49:52+02:00"
     }
   ]
 }

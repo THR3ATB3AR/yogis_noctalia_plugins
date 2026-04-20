@@ -1,0 +1,26 @@
+{
+    "id": "jellyfin",
+    "name": "Jellyfin",
+    "version": "1.0.0",
+    "description": "Search your Jellyfin library and play items in mpv.",
+    "tags": ["Launcher", "Media"],
+    "minNoctaliaVersion": "4.6.1",
+    "author": "Yogus",
+    "license": "MIT",
+    "entryPoints": {
+        "main": "Main.qml",
+        "launcherProvider": "LauncherProvider.qml",
+        "settings": "Settings.qml"
+    },
+    "dependencies": {
+        "plugins": []
+    },
+    "metadata": {
+        "commandPrefix": "jf",
+        "defaultSettings": {
+            "serverUrl": "http://localhost:8096",
+            "apiKey": "",
+            "userId": ""
+        }
+    }
+}
