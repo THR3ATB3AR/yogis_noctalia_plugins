@@ -119,7 +119,8 @@ Item {
     }
 
     function fetchUserId() {
-        let url = serverUrl + "/Users";
+        let baseUrl = serverUrl.endsWith('/') ? serverUrl.slice(0, -1) : serverUrl;
+        let url = baseUrl + "/Users/Me";
         let xhr = new XMLHttpRequest();
         xhr.open("GET", url);
         xhr.setRequestHeader("Authorization", 'MediaBrowser Token="' + apiKey + '"');
@@ -127,14 +128,31 @@ Item {
             if (xhr.readyState === XMLHttpRequest.DONE) {
                 if (xhr.status === 200) {
                     try {
-                        let users = JSON.parse(xhr.responseText);
-                        if (users && users.length > 0) {
-                            userId = users[0].Id;
+                        let user = JSON.parse(xhr.responseText);
+                        if (user && user.Id) {
+                            userId = user.Id;
                             Logger.i("JellyfinProvider", "Auto-detected User ID: " + userId);
                         }
                     } catch (e) {
-                        Logger.e("JellyfinProvider", "Failed to parse users");
+                        Logger.e("JellyfinProvider", "Failed to parse user details");
                     }
+                } else if (xhr.status !== 200) {
+                    // Fallback to /Users if /Users/Me fails (older versions)
+                    let fallbackUrl = baseUrl + "/Users";
+                    let xhr2 = new XMLHttpRequest();
+                    xhr2.open("GET", fallbackUrl);
+                    xhr2.setRequestHeader("Authorization", 'MediaBrowser Token="' + apiKey + '"');
+                    xhr2.onreadystatechange = function() {
+                        if (xhr2.readyState === XMLHttpRequest.DONE && xhr2.status === 200) {
+                            try {
+                                let users = JSON.parse(xhr2.responseText);
+                                if (users && users.length > 0) {
+                                    userId = users[0].Id;
+                                }
+                            } catch (e) {}
+                        }
+                    };
+                    xhr2.send();
                 }
             }
         };
@@ -142,7 +160,9 @@ Item {
     }
 
     function performSearch(query) {
-        if (!serverUrl || !apiKey) {
+        let baseUrl = serverUrl.endsWith('/') ? serverUrl.slice(0, -1) : serverUrl;
+
+        if (!baseUrl || !apiKey) {
             searchResults = [{
                 "name": "Missing Configuration",
                 "description": "Please configure Server URL and API Key in plugin settings.",
@@ -150,6 +170,19 @@ Item {
                 "isTablerIcon": true,
                 "isImage": false,
                 "onActivate": function() {}
+            }];
+            if (launcher) launcher.updateResults();
+            return;
+        }
+
+        if (!userId) {
+            searchResults = [{
+                "name": "User ID Missing",
+                "description": "Auto-detecting User ID failed. Please enter it manually in settings.",
+                "icon": "alert-circle",
+                "isTablerIcon": true,
+                "isImage": false,
+                "onActivate": function() { fetchUserId(); }
             }];
             if (launcher) launcher.updateResults();
             return;
@@ -171,34 +204,34 @@ Item {
         if (!parentId) {
             if (query === "") {
                 // Show Libraries
-                url = serverUrl + "/Users/" + userId + "/Views";
+                url = baseUrl + "/Users/" + userId + "/Views";
             } else {
                 // Global search (no episodes!)
-                url = serverUrl + "/Users/" + userId + "/Items?SearchTerm=" + encodeURIComponent(query) + "&Recursive=true&IncludeItemTypes=Movie,Series,CollectionFolder&Limit=20";
+                url = baseUrl + "/Users/" + userId + "/Items?SearchTerm=" + encodeURIComponent(query) + "&Recursive=true&IncludeItemTypes=Movie,Series,CollectionFolder&Limit=20";
             }
         } else if (parentType === "CollectionFolder" || parentType === "UserView") {
             if (query === "") {
                 // List Movies/Series in Library
-                url = serverUrl + "/Users/" + userId + "/Items?ParentId=" + parentId + "&IncludeItemTypes=Movie,Series,Folder&SortBy=SortName";
+                url = baseUrl + "/Users/" + userId + "/Items?ParentId=" + parentId + "&IncludeItemTypes=Movie,Series,Folder&SortBy=SortName";
             } else {
                 // Search in Library (no episodes)
-                url = serverUrl + "/Users/" + userId + "/Items?ParentId=" + parentId + "&SearchTerm=" + encodeURIComponent(query) + "&Recursive=true&IncludeItemTypes=Movie,Series,Folder&Limit=20";
+                url = baseUrl + "/Users/" + userId + "/Items?ParentId=" + parentId + "&SearchTerm=" + encodeURIComponent(query) + "&Recursive=true&IncludeItemTypes=Movie,Series,Folder&Limit=20";
             }
         } else if (parentType === "Series" || parentType === "Folder") {
             if (query === "") {
                 // List Seasons
-                url = serverUrl + "/Users/" + userId + "/Items?ParentId=" + parentId + "&IncludeItemTypes=Season,Folder&SortBy=SortName";
+                url = baseUrl + "/Users/" + userId + "/Items?ParentId=" + parentId + "&IncludeItemTypes=Season,Folder&SortBy=SortName";
             } else {
                 // Search Seasons
-                url = serverUrl + "/Users/" + userId + "/Items?ParentId=" + parentId + "&SearchTerm=" + encodeURIComponent(query) + "&IncludeItemTypes=Season,Folder";
+                url = baseUrl + "/Users/" + userId + "/Items?ParentId=" + parentId + "&SearchTerm=" + encodeURIComponent(query) + "&IncludeItemTypes=Season,Folder";
             }
         } else if (parentType === "Season") {
             if (query === "") {
                 // List Episodes
-                url = serverUrl + "/Users/" + userId + "/Items?ParentId=" + parentId + "&IncludeItemTypes=Episode&SortBy=SortName";
+                url = baseUrl + "/Users/" + userId + "/Items?ParentId=" + parentId + "&IncludeItemTypes=Episode&SortBy=SortName";
             } else {
                 // Search Episodes in this season
-                url = serverUrl + "/Users/" + userId + "/Items?ParentId=" + parentId + "&SearchTerm=" + encodeURIComponent(query) + "&IncludeItemTypes=Episode";
+                url = baseUrl + "/Users/" + userId + "/Items?ParentId=" + parentId + "&SearchTerm=" + encodeURIComponent(query) + "&IncludeItemTypes=Episode";
             }
         }
 
@@ -319,7 +352,8 @@ Item {
             if (launcher) launcher.setSearchText(prefix);
             // We intentionally do not call launcher.close() here!
         } else {
-            let streamUrl = serverUrl + "/Items/" + item.Id + "/Download?api_key=" + apiKey;
+            let baseUrl = serverUrl.endsWith('/') ? serverUrl.slice(0, -1) : serverUrl;
+            let streamUrl = baseUrl + "/Items/" + item.Id + "/Download?api_key=" + apiKey;
             Logger.i("JellyfinProvider", "Playing item " + item.Id + " in mpv");
             Quickshell.execDetached(["mpv", streamUrl]);
             if (launcher) launcher.close();
