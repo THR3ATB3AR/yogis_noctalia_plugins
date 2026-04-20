@@ -12,8 +12,8 @@ Item {
   property var pluginApi: null
   readonly property var geometryPlaceholder: panelContainer
 
-  property real contentPreferredWidth: 500 * Style.uiScaleRatio
-  property real contentPreferredHeight: 600 * Style.uiScaleRatio
+  property real contentPreferredWidth: 400 * Style.uiScaleRatio
+  property real contentPreferredHeight: 400 * Style.uiScaleRatio
   readonly property bool allowAttach: true
 
   property var accounts: pluginApi?.pluginSettings?.accounts || []
