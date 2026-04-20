@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "plugins": [
+    {
+      "id": "calculator-provider",
+      "name": "Calculator provider",
+      "version": "1.0.0",
+      "official": false,
+      "author": "THR3ATB3AR",
+      "description": "Provides calculator functionality to the terminal",
+      "repository": "https://github.com/THR3ATB3AR/noctalia-plugins",
+      "license": "MIT",
+      "tags": [
+        "Terminal"
+      ],
+      "lastUpdated": "2026-04-20T21:17:01+02:00"
+    }
+  ]
+}
