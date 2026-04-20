@@ -5,7 +5,7 @@ Item {
   property var pluginApi: null
 
   IpcHandler {
-    target: "plugin:calculator"
+    target: "plugin:calculator-provider"
     function toggle() {
       pluginApi.withCurrentScreen(screen => {
         pluginApi.toggleLauncher(screen);

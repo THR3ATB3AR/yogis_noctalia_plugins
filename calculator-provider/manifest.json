@@ -1,11 +1,12 @@
 {
-    "id": "calculator",
-    "name": "Calculator",
+    "id": "calculator-provider",
+    "name": "Calculator provider",
     "version": "1.0.0",
-    "description": "Calculate math expressions directly from the launcher.",
+    "description": "Provides calculator functionality to the terminal",
     "tags": ["Launcher", "Utility"],
     "minNoctaliaVersion": "4.6.1",
-    "author": "Yogus",
+    "author": "THR3ATB3AR",
+    "repository": "https://github.com/THR3ATB3AR/yogis-noctalia-plugins",
     "license": "MIT",
     "entryPoints": {
         "main": "Main.qml",
