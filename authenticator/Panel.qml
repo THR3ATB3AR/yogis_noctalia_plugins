@@ -112,12 +112,13 @@ Item {
           }
 
           ScrollView {
+            id: scrollView
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
 
             ColumnLayout {
-                width: parent.width
+                width: scrollView.width
                 spacing: Style.marginS
 
                 Repeater {

@@ -1,7 +1,7 @@
 {
     "id": "authenticator",
     "name": "Authenticator",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "description": "Show and copy 2FA OTP codes from your bar using Gnome Keyring for secure storage.",
     "tags": ["Utility", "Security"],
     "minNoctaliaVersion": "4.6.1",

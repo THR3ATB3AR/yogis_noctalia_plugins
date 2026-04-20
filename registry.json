@@ -33,7 +33,7 @@
     {
       "id": "authenticator",
       "name": "Authenticator",
-      "version": "1.0.5",
+      "version": "1.0.6",
       "official": false,
       "author": "THR3ATB3AR",
       "description": "Show and copy 2FA OTP codes from your bar using Gnome Keyring for secure storage.",
