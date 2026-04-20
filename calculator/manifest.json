@@ -1,0 +1,21 @@
+{
+    "id": "calculator",
+    "name": "Calculator",
+    "version": "1.0.0",
+    "description": "Calculate math expressions directly from the launcher.",
+    "tags": ["Launcher", "Utility"],
+    "minNoctaliaVersion": "4.6.1",
+    "author": "Yogus",
+    "license": "MIT",
+    "entryPoints": {
+        "main": "Main.qml",
+        "launcherProvider": "LauncherProvider.qml"
+    },
+    "dependencies": {
+        "plugins": []
+    },
+    "metadata": {
+        "commandPrefix": "=",
+        "defaultSettings": {}
+    }
+}
