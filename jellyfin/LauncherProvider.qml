@@ -296,6 +296,7 @@ Item {
         let isPlayed = item.UserData && item.UserData.Played;
         let unplayedCount = item.UserData && item.UserData.UnplayedItemCount !== undefined ? item.UserData.UnplayedItemCount : 0;
         let isFolder = item.IsFolder || item.Type === "CollectionFolder" || item.Type === "UserView" || item.Type === "Series" || item.Type === "Season" || item.Type === "Folder";
+        let hasPrimaryImage = item.ImageTags && item.ImageTags.Primary;
 
         if (item.Type === "Episode") {
             desc = "Episode";
@@ -318,14 +319,36 @@ Item {
             desc = "Library";
         }
 
+        let progressStr = "";
+        if (item.UserData && item.UserData.PlaybackPositionTicks > 0 && item.RunTimeTicks > 0) {
+            let percentage = item.UserData.PlaybackPositionTicks / item.RunTimeTicks;
+            let barLength = 10;
+            let filled = Math.round(percentage * barLength);
+            let empty = barLength - filled;
+            let bar = "█".repeat(filled) + "░".repeat(empty);
+            progressStr = bar + " " + Math.round(percentage * 100) + "%";
+        } else if (item.UserData && item.UserData.PlayedPercentage > 0 && item.UserData.PlayedPercentage < 100) {
+            let percentage = item.UserData.PlayedPercentage / 100.0;
+            let barLength = 10;
+            let filled = Math.round(percentage * barLength);
+            let empty = barLength - filled;
+            let bar = "█".repeat(filled) + "░".repeat(empty);
+            progressStr = bar + " " + Math.round(item.UserData.PlayedPercentage) + "%";
+        }
+
+        if (progressStr !== "") {
+            desc = desc ? desc + "  |  " + progressStr : progressStr;
+        }
+
         return {
             "name": title,
             "description": desc,
             "icon": isFolder ? "folder" : "movie",
-            "isTablerIcon": true,
-            "isImage": false,
+            "isTablerIcon": !hasPrimaryImage,
+            "isImage": !!hasPrimaryImage,
+            "itemId": item.Id,
             "hideIcon": false,
-            "singleLine": false,
+            "singleLine": desc === "",
             "provider": root,
             "onActivate": function() {
                 root.activateEntry(item);
@@ -334,7 +357,9 @@ Item {
     }
 
     function getImageUrl(modelData) {
-        return null;
+        if (!modelData || !modelData.itemId) return null;
+        let baseUrl = serverUrl.endsWith('/') ? serverUrl.slice(0, -1) : serverUrl;
+        return baseUrl + "/Items/" + modelData.itemId + "/Images/Primary?fillHeight=128&fillWidth=128&quality=96&api_key=" + apiKey;
     }
 
     function activateEntry(item) {
