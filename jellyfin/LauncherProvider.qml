@@ -342,8 +342,9 @@ Item {
 
         return {
             "name": title,
-            "description": desc,
-            "imageText": "",
+            "description": hasPrimaryImage
+                ? "\u200B • " + desc
+                : desc,
             "icon": isFolder ? "folder" : "movie",
             "isTablerIcon": !hasPrimaryImage,
             "isImage": !!hasPrimaryImage,
