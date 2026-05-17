@@ -343,6 +343,7 @@ Item {
         return {
             "name": title,
             "description": desc,
+            "imageText": "",
             "icon": isFolder ? "folder" : "movie",
             "isTablerIcon": !hasPrimaryImage,
             "isImage": !!hasPrimaryImage,
