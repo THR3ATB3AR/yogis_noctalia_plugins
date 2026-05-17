@@ -348,7 +348,7 @@ Item {
             "isImage": !!hasPrimaryImage,
             "itemId": item.Id,
             "hideIcon": false,
-            "singleLine": desc === "",
+            "singleLine": false,
             "provider": root,
             "onActivate": function() {
                 root.activateEntry(item);
