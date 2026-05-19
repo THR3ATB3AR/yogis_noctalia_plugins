@@ -1,0 +1,25 @@
+{
+  "id": "plugin-tray",
+  "name": "Plugin Tray",
+  "version": "1.0.0",
+  "minNoctaliaVersion": "4.6.6",
+  "author": "THR3ATB3AR",
+  "official": false,
+  "license": "MIT",
+  "description": "A tray for Noctalia plugins to declutter the bar.",
+  "tags": [
+    "Utility",
+    "Launcher"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml",
+    "panel": "Panel.qml",
+    "settings": "Settings.qml"
+  },
+  "metadata": {
+    "defaultSettings": {
+      "displayMode": "grid",
+      "visiblePlugins": []
+    }
+  }
+}

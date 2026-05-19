@@ -44,6 +44,21 @@
         "Security"
       ],
       "lastUpdated": "2026-04-21T00:00:00+02:00"
+    },
+    {
+      "id": "plugin-tray",
+      "name": "Plugin Tray",
+      "version": "1.0.0",
+      "official": false,
+      "author": "THR3ATB3AR",
+      "description": "A tray for Noctalia plugins to declutter the bar.",
+      "repository": "https://github.com/THR3ATB3AR/yogis-noctalia-plugins",
+      "license": "MIT",
+      "tags": [
+        "Utility",
+        "Launcher"
+      ],
+      "lastUpdated": "2026-05-19T19:55:00+02:00"
     }
   ]
 }
