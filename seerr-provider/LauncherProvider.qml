@@ -22,6 +22,12 @@ Item {
     
     // Path state for drill-down: Array of {id, type, title}
     property var pathState: []
+    
+    // Server Details State
+    property var currentServerProfiles: []
+    property var currentServerTags: []
+    property var selectedTags: []
+    property bool isFetchingDetails: false
 
     property var radarrServers: []
     property var sonarrServers: []
@@ -129,7 +135,7 @@ Item {
             
             // Show servers if we have drilled down
             if (pathState.length > 0) {
-                showServerList();
+                showNextStep();
             } else {
                 debounceTimer.restart();
             }
@@ -149,51 +155,192 @@ Item {
         return searchResults;
     }
 
-    function showServerList() {
+    function fetchServerDetails(mediaType, serverId) {
+        isFetchingDetails = true;
+        currentServerProfiles = [];
+        currentServerTags = [];
+        selectedTags = [];
+
+        let baseUrl = serverUrl.endsWith('/') ? serverUrl.slice(0, -1) : serverUrl;
+        let url = baseUrl + "/api/v1/service/" + (mediaType === "movie" ? "radarr" : "sonarr") + "/" + serverId;
+        
+        let xhr = new XMLHttpRequest();
+        xhr.open("GET", url);
+        xhr.setRequestHeader("X-Api-Key", apiKey);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                isFetchingDetails = false;
+                if (xhr.status === 200) {
+                    try {
+                        let data = JSON.parse(xhr.responseText);
+                        currentServerProfiles = data.profiles || [];
+                        currentServerTags = data.tags || (data.server && data.server.tags) || [];
+                    } catch (e) {
+                        Logger.e("SeerrProvider", "Failed to parse server details");
+                    }
+                }
+                if (launcher && pathState.length === 2) showNextStep();
+            }
+        };
+        xhr.send();
+    }
+
+    function showNextStep() {
         if (pathState.length === 0) return;
         
-        let mediaItem = pathState[pathState.length - 1];
-        let servers = mediaItem.type === "movie" ? radarrServers : sonarrServers;
-        
-        if (servers.length === 0) {
-            searchResults = [{
-                "name": "No Servers Found",
-                "description": "Could not find any configured " + (mediaItem.type === "movie" ? "Radarr" : "Sonarr") + " servers.",
-                "icon": "alert-circle",
-                "isTablerIcon": true,
-                "isImage": false,
-                "onActivate": function() {}
-            }];
-            if (launcher) launcher.updateResults();
-            return;
-        }
-
-        searchResults = servers.map(server => {
-            let desc = server.activeDirectory || "";
-            if (server.is4k) {
-                desc += (desc ? " | " : "") + "4K";
-            }
-            if (server.activeProfileName) {
-                desc += (desc ? " | " : "") + server.activeProfileName;
-            }
+        if (pathState.length === 1) {
+            let mediaItem = pathState[0];
+            let servers = mediaItem.type === "movie" ? radarrServers : sonarrServers;
             
-            return {
-                "name": "Request on " + server.name,
-                "description": desc,
-                "icon": "server",
+            if (servers.length === 0) {
+                searchResults = [{
+                    "name": "No Servers Found",
+                    "description": "Could not find any configured " + (mediaItem.type === "movie" ? "Radarr" : "Sonarr") + " servers.",
+                    "icon": "alert-circle",
+                    "isTablerIcon": true,
+                    "isImage": false,
+                    "onActivate": function() {}
+                }];
+                if (launcher) launcher.updateResults();
+                return;
+            }
+
+            searchResults = servers.map(server => {
+                let desc = server.activeDirectory || "";
+                if (server.is4k) {
+                    desc += (desc ? " | " : "") + "4K";
+                }
+                
+                return {
+                    "name": "Request on " + server.name,
+                    "description": desc,
+                    "icon": "server",
+                    "isTablerIcon": true,
+                    "isImage": false,
+                    "itemId": server.id,
+                    "hideIcon": false,
+                    "singleLine": false,
+                    "provider": root,
+                    "onActivate": function() {
+                        let newPath = [];
+                        for (let i = 0; i < pathState.length; i++) newPath.push(pathState[i]);
+                        newPath.push({id: server.id, type: "server", title: server.name, rootFolder: server.activeDirectory});
+                        pathState = newPath;
+                        fetchServerDetails(mediaItem.type, server.id);
+                        if (launcher) launcher.setSearchText(getExpectedPrefix());
+                    }
+                };
+            });
+            
+            if (launcher) launcher.updateResults();
+        } else if (pathState.length === 2) {
+            if (isFetchingDetails) {
+                searchResults = [{
+                    "name": "Loading Profiles...",
+                    "description": "Fetching server configuration from Seerr...",
+                    "icon": "loader",
+                    "isTablerIcon": true,
+                    "isImage": false,
+                    "onActivate": function() {}
+                }];
+                if (launcher) launcher.updateResults();
+                return;
+            }
+
+            if (currentServerProfiles.length === 0) {
+                searchResults = [{
+                    "name": "No Profiles Found",
+                    "description": "No quality profiles configured on this server.",
+                    "icon": "alert-circle",
+                    "isTablerIcon": true,
+                    "isImage": false,
+                    "onActivate": function() {}
+                }];
+                if (launcher) launcher.updateResults();
+                return;
+            }
+
+            searchResults = currentServerProfiles.map(profile => {
+                return {
+                    "name": profile.name,
+                    "description": "Quality Profile",
+                    "icon": "list",
+                    "isTablerIcon": true,
+                    "isImage": false,
+                    "itemId": profile.id,
+                    "hideIcon": false,
+                    "singleLine": false,
+                    "provider": root,
+                    "onActivate": function() {
+                        let newPath = [];
+                        for (let i = 0; i < pathState.length; i++) newPath.push(pathState[i]);
+                        newPath.push({id: profile.id, type: "profile", title: profile.name});
+                        pathState = newPath;
+                        selectedTags = [];
+                        if (launcher) launcher.setSearchText(getExpectedPrefix());
+                    }
+                };
+            });
+            
+            if (launcher) launcher.updateResults();
+        } else if (pathState.length === 3) {
+            let results = [];
+
+            results.push({
+                "name": "🚀 Submit Request",
+                "description": selectedTags.length > 0 ? "With " + selectedTags.length + " tag(s)" : "Submit immediately",
+                "icon": "send",
                 "isTablerIcon": true,
                 "isImage": false,
-                "itemId": server.id,
                 "hideIcon": false,
                 "singleLine": false,
                 "provider": root,
                 "onActivate": function() {
-                    requestMedia(mediaItem.id, mediaItem.type, server.id, server.activeProfileId, server.activeDirectory);
+                    let mediaItem = pathState[0];
+                    let serverItem = pathState[1];
+                    let profileItem = pathState[2];
+                    requestMedia(mediaItem.id, mediaItem.type, serverItem.id, profileItem.id, serverItem.rootFolder, selectedTags);
                 }
-            };
-        });
-        
-        if (launcher) launcher.updateResults();
+            });
+
+            currentServerTags.forEach(tag => {
+                let isSelected = false;
+                for (let i = 0; i < selectedTags.length; i++) {
+                    if (selectedTags[i] === tag.id) isSelected = true;
+                }
+                
+                let tagName = tag.label || tag.name || "Tag " + tag.id;
+                
+                results.push({
+                    "name": isSelected ? "✓ " + tagName : tagName,
+                    "description": "Tag",
+                    "icon": "tag",
+                    "isTablerIcon": true,
+                    "isImage": false,
+                    "itemId": tag.id,
+                    "hideIcon": false,
+                    "singleLine": false,
+                    "provider": root,
+                    "onActivate": function() {
+                        let newSelected = [];
+                        let found = false;
+                        for (let i = 0; i < selectedTags.length; i++) {
+                            if (selectedTags[i] === tag.id) {
+                                found = true;
+                            } else {
+                                newSelected.push(selectedTags[i]);
+                            }
+                        }
+                        if (!found) newSelected.push(tag.id);
+                        selectedTags = newSelected;
+                        showNextStep(); // refresh list
+                    }
+                });
+            });
+
+            searchResults = results;
+            if (launcher) launcher.updateResults();
+        }
     }
 
     function performSearch(query) {
@@ -294,17 +441,17 @@ Item {
         let iconStr = item.mediaType === "movie" ? "movie" : "device-tv";
         
         if (item.posterPath) {
-            iconStr = "https://image.tmdb.org/t/p/w92" + item.posterPath;
             isImage = true;
         }
 
         return {
             "name": title,
-            "description": desc,
+            "description": isImage ? "\u200B • " + desc : desc,
             "icon": iconStr,
             "isTablerIcon": !isImage,
             "isImage": isImage,
             "itemId": item.id,
+            "posterPath": item.posterPath,
             "hideIcon": false,
             "singleLine": false,
             "provider": root,
@@ -325,8 +472,13 @@ Item {
         let prefix = getExpectedPrefix();
         if (launcher) launcher.setSearchText(prefix);
     }
+
+    function getImageUrl(modelData) {
+        if (!modelData || !modelData.posterPath) return null;
+        return "https://image.tmdb.org/t/p/w92" + modelData.posterPath;
+    }
     
-    function requestMedia(mediaId, mediaType, serverId, profileId, rootFolder) {
+    function requestMedia(mediaId, mediaType, serverId, profileId, rootFolder, tags) {
         let baseUrl = serverUrl.endsWith('/') ? serverUrl.slice(0, -1) : serverUrl;
         let url = baseUrl + "/api/v1/request";
         
@@ -342,6 +494,10 @@ Item {
             "profileId": profileId,
             "rootFolder": rootFolder
         };
+        
+        if (tags && tags.length > 0) {
+            body.tags = tags;
+        }
         
         xhr.onreadystatechange = function() {
             if (xhr.readyState === XMLHttpRequest.DONE) {
