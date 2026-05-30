@@ -59,6 +59,21 @@
         "Launcher"
       ],
       "lastUpdated": "2026-05-19T19:55:00+02:00"
+    },
+    {
+      "id": "seerr-provider",
+      "name": "Seerr",
+      "version": "1.0.0",
+      "official": false,
+      "author": "THR3ATB3AR",
+      "description": "Search and request media from Overseerr/Jellyseerr.",
+      "repository": "https://github.com/THR3ATB3AR/yogis-noctalia-plugins",
+      "license": "MIT",
+      "tags": [
+        "Launcher",
+        "Media"
+      ],
+      "lastUpdated": "2026-05-30T00:00:00+02:00"
     }
   ]
 }
