@@ -28,6 +28,11 @@ Item {
     property var currentServerTags: []
     property var selectedTags: []
     property bool isFetchingDetails: false
+    
+    // TV Details State
+    property var currentTvSeasons: []
+    property var selectedSeasons: []
+    property bool isFetchingSeasons: false
 
     property var radarrServers: []
     property var sonarrServers: []
@@ -191,6 +196,38 @@ Item {
         xhr.send();
     }
 
+    function fetchTvDetails(mediaId) {
+        isFetchingSeasons = true;
+        currentTvSeasons = [];
+        selectedSeasons = []; // Empty means "All"
+
+        let baseUrl = serverUrl.endsWith('/') ? serverUrl.slice(0, -1) : serverUrl;
+        let url = baseUrl + "/api/v1/tv/" + mediaId;
+        
+        let xhr = new XMLHttpRequest();
+        xhr.open("GET", url);
+        xhr.setRequestHeader("X-Api-Key", apiKey);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                isFetchingSeasons = false;
+                if (xhr.status === 200) {
+                    try {
+                        let data = JSON.parse(xhr.responseText);
+                        if (data.seasons && data.seasons.length > 0) {
+                            currentTvSeasons = data.seasons.sort((a, b) => a.seasonNumber - b.seasonNumber);
+                        }
+                    } catch (e) {
+                        Logger.e("SeerrProvider", "Failed to parse TV details: " + e.message);
+                    }
+                } else {
+                    Logger.e("SeerrProvider", "Failed to fetch TV details. HTTP Status: " + xhr.status);
+                }
+                if (launcher && pathState.length === 3) showNextStep();
+            }
+        };
+        xhr.send();
+    }
+
     function showNextStep() {
         if (pathState.length === 0) return;
         
@@ -291,10 +328,31 @@ Item {
             if (launcher) launcher.updateResults();
         } else if (pathState.length === 3) {
             let results = [];
+            let mediaItem = pathState[0];
+            let serverItem = pathState[1];
+            let profileItem = pathState[2];
+            
+            if (mediaItem.type === "tv" && isFetchingSeasons) {
+                searchResults = [{
+                    "name": "Loading Seasons...",
+                    "description": "Fetching TV show details from Seerr...",
+                    "icon": "loader",
+                    "isTablerIcon": true,
+                    "isImage": false,
+                    "onActivate": function() {}
+                }];
+                if (launcher) launcher.updateResults();
+                return;
+            }
+
+            let submitDesc = selectedTags.length > 0 ? "With " + selectedTags.length + " tag(s)" : "No tags";
+            if (mediaItem.type === "tv") {
+                submitDesc += " | " + (selectedSeasons.length === 0 ? "All Seasons" : selectedSeasons.length + " Season(s)");
+            }
 
             results.push({
                 "name": "🚀 Submit Request",
-                "description": selectedTags.length > 0 ? "With " + selectedTags.length + " tag(s)" : "Submit immediately",
+                "description": submitDesc,
                 "icon": "send",
                 "isTablerIcon": true,
                 "isImage": false,
@@ -302,12 +360,60 @@ Item {
                 "singleLine": false,
                 "provider": root,
                 "onActivate": function() {
-                    let mediaItem = pathState[0];
-                    let serverItem = pathState[1];
-                    let profileItem = pathState[2];
-                    requestMedia(mediaItem.id, mediaItem.type, serverItem.id, profileItem.id, serverItem.rootFolder, selectedTags);
+                    requestMedia(mediaItem.id, mediaItem.type, serverItem.id, profileItem.id, serverItem.rootFolder, selectedTags, selectedSeasons);
                 }
             });
+
+            if (mediaItem.type === "tv") {
+                let isAllSeasons = selectedSeasons.length === 0;
+                results.push({
+                    "name": isAllSeasons ? "✓ All Seasons" : "All Seasons",
+                    "description": "Season",
+                    "icon": "stack",
+                    "isTablerIcon": true,
+                    "isImage": false,
+                    "hideIcon": false,
+                    "singleLine": false,
+                    "provider": root,
+                    "onActivate": function() {
+                        selectedSeasons = [];
+                        showNextStep();
+                    }
+                });
+                
+                currentTvSeasons.forEach(season => {
+                    let sNumber = season.seasonNumber;
+                    let isSelected = false;
+                    for (let i = 0; i < selectedSeasons.length; i++) {
+                        if (selectedSeasons[i] === sNumber) isSelected = true;
+                    }
+                    results.push({
+                        "name": isSelected ? "✓ Season " + sNumber : "Season " + sNumber,
+                        "description": (season.episodeCount || 0) + " episodes",
+                        "icon": "device-tv",
+                        "isTablerIcon": true,
+                        "isImage": false,
+                        "itemId": sNumber,
+                        "hideIcon": false,
+                        "singleLine": false,
+                        "provider": root,
+                        "onActivate": function() {
+                            let newSelected = [];
+                            let found = false;
+                            for (let i = 0; i < selectedSeasons.length; i++) {
+                                if (selectedSeasons[i] === sNumber) {
+                                    found = true;
+                                } else {
+                                    newSelected.push(selectedSeasons[i]);
+                                }
+                            }
+                            if (!found) newSelected.push(sNumber);
+                            selectedSeasons = newSelected;
+                            showNextStep(); // refresh list
+                        }
+                    });
+                });
+            }
 
             currentServerTags.forEach(tag => {
                 let isSelected = false;
@@ -477,6 +583,10 @@ Item {
         newPath.push({id: item.id, type: item.mediaType, title: title});
         pathState = newPath;
         
+        if (item.mediaType === "tv") {
+            fetchTvDetails(item.id);
+        }
+        
         let prefix = getExpectedPrefix();
         if (launcher) launcher.setSearchText(prefix);
     }
@@ -486,7 +596,7 @@ Item {
         return "https://image.tmdb.org/t/p/w92" + modelData.posterPath;
     }
     
-    function requestMedia(mediaId, mediaType, serverId, profileId, rootFolder, tags) {
+    function requestMedia(mediaId, mediaType, serverId, profileId, rootFolder, tags, seasons) {
         let baseUrl = serverUrl.endsWith('/') ? serverUrl.slice(0, -1) : serverUrl;
         let url = baseUrl + "/api/v1/request";
         
@@ -505,6 +615,14 @@ Item {
         
         if (tags && tags.length > 0) {
             body.tags = tags;
+        }
+
+        if (mediaType === "tv") {
+            if (seasons && seasons.length > 0) {
+                body.seasons = seasons;
+            } else {
+                body.seasons = "all";
+            }
         }
         
         xhr.onreadystatechange = function() {
