@@ -63,7 +63,7 @@
     {
       "id": "seerr-provider",
       "name": "Seerr",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "official": false,
       "author": "THR3ATB3AR",
       "description": "Search and request media from Overseerr/Jellyseerr.",
@@ -73,7 +73,7 @@
         "Launcher",
         "Media"
       ],
-      "lastUpdated": "2026-05-30T00:00:00+02:00"
+      "lastUpdated": "2026-05-30T21:29:00+02:00"
     }
   ]
 }

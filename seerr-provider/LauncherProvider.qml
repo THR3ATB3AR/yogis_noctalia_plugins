@@ -70,16 +70,20 @@ Item {
         xhr.open("GET", url);
         xhr.setRequestHeader("X-Api-Key", apiKey);
         xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
-                try {
-                    let servers = JSON.parse(xhr.responseText);
-                    if (type === "radarr") {
-                        radarrServers = servers;
-                    } else {
-                        sonarrServers = servers;
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    try {
+                        let servers = JSON.parse(xhr.responseText);
+                        if (type === "radarr") {
+                            radarrServers = servers;
+                        } else {
+                            sonarrServers = servers;
+                        }
+                    } catch (e) {
+                        Logger.e("SeerrProvider", "Failed to parse " + type + " servers: " + e.message);
                     }
-                } catch (e) {
-                    Logger.e("SeerrProvider", "Failed to parse " + type + " servers");
+                } else {
+                    Logger.e("SeerrProvider", "Failed to fetch " + type + " servers. HTTP Status: " + xhr.status + " Response: " + xhr.responseText);
                 }
             }
         };
@@ -176,8 +180,10 @@ Item {
                         currentServerProfiles = data.profiles || [];
                         currentServerTags = data.tags || (data.server && data.server.tags) || [];
                     } catch (e) {
-                        Logger.e("SeerrProvider", "Failed to parse server details");
+                        Logger.e("SeerrProvider", "Failed to parse server details: " + e.message);
                     }
+                } else {
+                    Logger.e("SeerrProvider", "Failed to fetch server details for ID " + serverId + ". HTTP Status: " + xhr.status + " Response: " + xhr.responseText);
                 }
                 if (launcher && pathState.length === 2) showNextStep();
             }
@@ -403,6 +409,7 @@ Item {
                             }];
                         }
                     } catch (e) {
+                        Logger.e("SeerrProvider", "Failed to parse search results: " + e.message);
                         searchResults = [{
                             "name": "Error",
                             "description": "Failed to parse search results.",
@@ -413,6 +420,7 @@ Item {
                         }];
                     }
                 } else {
+                    Logger.e("SeerrProvider", "Search failed. HTTP Status: " + xhr.status + " Response: " + xhr.responseText);
                     searchResults = [{
                         "name": "Connection Error",
                         "description": "Could not connect to Seerr. HTTP Status: " + xhr.status,
@@ -502,8 +510,10 @@ Item {
         xhr.onreadystatechange = function() {
             if (xhr.readyState === XMLHttpRequest.DONE) {
                 if (xhr.status === 201 || xhr.status === 200) {
+                    Logger.i("SeerrProvider", "Media " + mediaId + " requested successfully!");
                     Quickshell.execDetached(["notify-send", "-u", "normal", "Seerr", "Media requested successfully!"]);
                 } else {
+                    Logger.e("SeerrProvider", "Failed to request media " + mediaId + ". HTTP Status: " + xhr.status + " Response: " + xhr.responseText);
                     Quickshell.execDetached(["notify-send", "-u", "critical", "Seerr", "Failed to request media: " + xhr.status]);
                 }
             }
