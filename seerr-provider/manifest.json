@@ -1,0 +1,25 @@
+{
+    "id": "seerr-provider",
+    "name": "Seerr",
+    "version": "1.0.0",
+    "description": "Search and request media from Overseerr/Jellyseerr.",
+    "tags": ["Launcher", "Media"],
+    "minNoctaliaVersion": "4.6.1",
+    "author": "Yogus",
+    "license": "MIT",
+    "entryPoints": {
+        "main": "Main.qml",
+        "launcherProvider": "LauncherProvider.qml",
+        "settings": "Settings.qml"
+    },
+    "dependencies": {
+        "plugins": []
+    },
+    "metadata": {
+        "commandPrefix": "seerr",
+        "defaultSettings": {
+            "serverUrl": "http://localhost:5055",
+            "apiKey": ""
+        }
+    }
+}
